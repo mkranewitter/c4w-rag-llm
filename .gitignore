@@ -1,0 +1,22 @@
+# Virtuelle Umgebungen
+.venv/
+__pycache__/
+
+# Python Bytecode
+*.pyc
+*.pyo
+*.pyd
+
+# VS Code Workspace
+.vscode/
+
+# Firebase Studio intern
+.idx/
+
+# Umgebungsvariablen / Schlüssel
+.env
+api_keys.txt
+
+# Temporäre / generierte Dateien
+*.log
+.DS_Store

@@ -1,0 +1,15 @@
+beautifulsoup4
+cassandra-driver
+faiss-cpu
+google-api-python-client>=2.100.0
+langchain
+langchain-astradb
+langchain-community
+langchain-openai
+openai
+psycopg2-binary
+python-docx
+python-dotenv
+pymupdf
+streamlit
+tqdm
