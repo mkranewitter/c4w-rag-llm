@@ -1,10 +1,16 @@
+import os
+# LangSmith-Konfiguration
+os.environ["LANGCHAIN_TRACING_V2"] = "true"
+os.environ["LANGCHAIN_API_KEY"] = os.getenv("LANGCHAIN_API_KEY")
+os.environ["LANGCHAIN_PROJECT"] = os.getenv("LANGCHAIN_PROJECT")
+
 import streamlit as st
 import pandas as pd
-import os
 from datetime import datetime
 from uuid import uuid4
 from streamlit_feedback import streamlit_feedback
 from modules.hybrid_agent_multi_retrieval import get_multi_source_agent
+
 
 st.set_page_config(page_title="Kinderbetreuungs-Chatbot", page_icon="🦊")
 st.title("🦊 Kinderbetreuungs-Chatbot")
