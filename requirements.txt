@@ -6,6 +6,7 @@ langchain
 langchain-astradb
 langchain-community
 langchain-openai
+langsmith
 openai
 psycopg2-binary
 python-docx
