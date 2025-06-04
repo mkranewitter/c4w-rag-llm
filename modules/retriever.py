@@ -24,8 +24,7 @@ def get_retriever():
         collection_name=astra_db_collection_name,
         api_endpoint=astra_db_api_endpoint,
         token=astra_db_application_token,
-        namespace=astra_db_keyspace,
-        create_collection_if_not_exists=False  # Zuletzt hinzugefügt (4.6.2025) um Streamlit Fehler zu beheben
+        namespace=astra_db_keyspace
     )
 
     retriever = vectorstore.as_retriever()
