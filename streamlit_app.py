@@ -74,7 +74,13 @@ for i in range(0, len(st.session_state.chat_history), 2):
             rating = feedback["score"]
             comment = feedback["text"]
 
-            run_id = run_collector.traced_runs[0].id if run_collector.traced_runs else None
+            # Finde den Root-Run für LangSmith Feedback (execution_order == 1)
+            run_id = None
+            for run in run_collector.traced_runs:
+                if run.execution_order == 1:
+                    run_id = run.id
+                    break
+
             if run_id:
                 try:
                     client.create_feedback(
