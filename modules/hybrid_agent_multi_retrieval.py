@@ -17,7 +17,7 @@ def get_multi_source_agent(callbacks=None):
         model="gpt-4o",
         temperature=0,
         openai_api_key=os.getenv("OPENAI_API_KEY"),
-        callbacks=callbacks
+        callbacks=callbacks,
     )
 
     # SQL Agent vorbereiten
@@ -30,8 +30,8 @@ def get_multi_source_agent(callbacks=None):
         llm=llm,
         db=db,
         agent_type="openai-tools",
+        verbose=False,
         callbacks=callbacks,
-        verbose=False
     )
 
     # RAG Retriever vorbereiten
@@ -39,8 +39,8 @@ def get_multi_source_agent(callbacks=None):
     rag_chain = RetrievalQA.from_chain_type(
         llm=llm,
         retriever=retriever,
+        return_source_documents=True,
         callbacks=callbacks,
-        return_source_documents=True
     )
 
     # Google Search vorbereiten
