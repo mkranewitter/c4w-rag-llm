@@ -1,9 +1,11 @@
 import os
-from langsmith import Client
 import streamlit as st
+import pandas as pd
 from datetime import datetime
 from uuid import uuid4
 from streamlit_feedback import streamlit_feedback
+from langsmith import Client
+from langchain.callbacks.tracers.run_collector import RunCollectorCallbackHandler
 from modules.hybrid_agent_multi_retrieval import get_multi_source_agent
 
 # LangSmith-Konfiguration aus Streamlit Secrets
@@ -13,9 +15,10 @@ if "LANGCHAIN_API_KEY" in st.secrets and "LANGCHAIN_PROJECT" in st.secrets:
     os.environ["LANGCHAIN_PROJECT"] = st.secrets["LANGCHAIN_PROJECT"]
     client = Client()
 else:
-    st.warning("⚠️ LangSmith nicht aktiviert – API Key oder Projektname fehlt.")
+    st.warning("⚠️ LangSmith nicht aktiviert – kein Feedback-Tracking aktiv.")
     client = None
 
+# Streamlit Interface
 st.set_page_config(page_title="Kinderbetreuungs-Chatbot", page_icon="🦊")
 st.title("🦊 Kinderbetreuungs-Chatbot")
 
@@ -24,13 +27,17 @@ Willkommen! Stelle hier deine Fragen zu Kinderbetreuungseinrichtungen in Oberös
 z. B. zu Standorten, Öffnungszeiten oder zur Anmeldung.
 """)
 
-agent = get_multi_source_agent()
+# Callback vorbereiten
+run_collector = RunCollectorCallbackHandler()
+
+# Agent mit Callback initialisieren
+agent = get_multi_source_agent(callbacks=[run_collector])
 
 # Session State für Verlauf initialisieren
 if "chat_history" not in st.session_state:
     st.session_state.chat_history = []
 
-# Hinweistext anzeigen, solange keine Eingabe gemacht wurde
+# Hinweistext anzeigen
 if not st.session_state.chat_history:
     st.info("👋 Du kannst z. B. fragen: *Welche Einrichtungen gibt es in Hagenberg?*")
 
@@ -69,23 +76,16 @@ for i in range(0, len(st.session_state.chat_history), 2):
             key=f"feedback_{i}"
         )
 
-        if feedback:
+        if feedback and client:
             rating = feedback["score"]
             comment = feedback["text"]
-            st.toast("✅ Danke für dein Feedback!", icon="🦊")
-
-            # Feedback an LangSmith senden (wenn aktiviert)
-            if client:
-                try:
-                    from langchain.smith import get_traceable_awaitable
-                    run = get_traceable_awaitable()
-                    if run and run.run_id:
-                        client.create_feedback(
-                            run_id=run.run_id,
-                            key="user_feedback",
-                            score=1.0 if rating == 1 else 0.0,
-                            comment=comment,
-                            feedback_source={"type": "app", "metadata": {"source": "streamlit"}}
-                        )
-                except Exception as e:
-                    st.warning(f"⚠️ Feedback konnte nicht an LangSmith gesendet werden: {e}")
+            run_id = run_collector.traced_runs[0].id if run_collector.traced_runs else None
+            if run_id:
+                client.create_feedback(
+                    run_id=run_id,
+                    key="user_feedback",
+                    score=1.0 if rating == 1 else 0.0,
+                    comment=comment,
+                    feedback_source={"type": "app", "metadata": {"source": "streamlit"}}
+                )
+                st.toast("✅ Danke für dein Feedback!", icon="🦊")
