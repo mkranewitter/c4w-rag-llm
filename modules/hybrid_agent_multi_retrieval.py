@@ -65,8 +65,7 @@ def get_multi_source_agent(callbacks=None):
         print("🌍 Google Websuche wird ausgeführt...")
         web_snippets = google_search.results(user_input, num_results=5)
         web_result = "\n\n".join([
-            f"{i+1}. {r.get('snippet', '[kein snippet verfügbar]')}\nQuelle: {r.get('link', '[kein Link]')}"
-            for i, r in enumerate(web_snippets)
+            f"{i+1}. {r['snippet']}\nQuelle: {r['link']}" for i, r in enumerate(web_snippets)
 ])
 
         print("🧠 GPT-4o fasst alle Ergebnisse zusammen...")
