@@ -11,12 +11,13 @@ from modules.web_search import get_google_search_tool
 
 load_dotenv()
 
-def get_multi_source_agent():
+def get_multi_source_agent(callbacks=None):
     # GPT-4o LLM vorbereiten
     llm = ChatOpenAI(
         model="gpt-4o",
         temperature=0,
-        openai_api_key=os.getenv("OPENAI_API_KEY")
+        openai_api_key=os.getenv("OPENAI_API_KEY"),
+        callbacks=callbacks
     )
 
     # SQL Agent vorbereiten
@@ -29,6 +30,7 @@ def get_multi_source_agent():
         llm=llm,
         db=db,
         agent_type="openai-tools",
+        callbacks=callbacks,
         verbose=False
     )
 
@@ -37,6 +39,7 @@ def get_multi_source_agent():
     rag_chain = RetrievalQA.from_chain_type(
         llm=llm,
         retriever=retriever,
+        callbacks=callbacks,
         return_source_documents=True
     )
 
