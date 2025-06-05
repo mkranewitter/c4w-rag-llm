@@ -1,6 +1,5 @@
 import os
 import streamlit as st
-import pandas as pd
 from datetime import datetime
 from uuid import uuid4
 from streamlit_feedback import streamlit_feedback
@@ -18,7 +17,7 @@ else:
     st.warning("⚠️ LangSmith nicht aktiviert – kein Feedback-Tracking aktiv.")
     client = None
 
-# Streamlit Interface
+# UI-Konfiguration
 st.set_page_config(page_title="Kinderbetreuungs-Chatbot", page_icon="🦊")
 st.title("🦊 Kinderbetreuungs-Chatbot")
 
@@ -27,46 +26,41 @@ Willkommen! Stelle hier deine Fragen zu Kinderbetreuungseinrichtungen in Oberös
 z. B. zu Standorten, Öffnungszeiten oder zur Anmeldung.
 """)
 
-# Callback vorbereiten
+# LangSmith Callback vorbereiten
 run_collector = RunCollectorCallbackHandler()
 
-# Agent mit Callback initialisieren
+# Agent mit Callback
 agent = get_multi_source_agent(callbacks=[run_collector])
 
-# Session State für Verlauf initialisieren
+# Chat-Historie initialisieren
 if "chat_history" not in st.session_state:
     st.session_state.chat_history = []
 
-# Hinweistext anzeigen
 if not st.session_state.chat_history:
     st.info("👋 Du kannst z. B. fragen: *Welche Einrichtungen gibt es in Hagenberg?*")
 
-# Nutzerinput
+# Nutzerfrage
 user_input = st.chat_input("Stelle eine Frage…")
 
 if user_input:
     with st.spinner("Antwort wird generiert..."):
         try:
             response = agent(user_input)
-            if "output" in response:
-                answer = response["output"]
-            elif "result" in response:
-                answer = response["result"]
-            else:
-                answer = "⚠️ Keine Antwort erhalten."
+            answer = response.get("output") or response.get("result") or "⚠️ Keine Antwort erhalten."
         except Exception as e:
             answer = f"❌ Fehler: {str(e)}"
 
     st.session_state.chat_history.append({"role": "user", "content": user_input})
     st.session_state.chat_history.append({"role": "assistant", "content": answer})
 
-# Chatverlauf + Feedback anzeigen
+# Verlauf + Feedback anzeigen
 for i in range(0, len(st.session_state.chat_history), 2):
     user_msg = st.session_state.chat_history[i]["content"]
     bot_msg = st.session_state.chat_history[i + 1]["content"] if i + 1 < len(st.session_state.chat_history) else ""
 
     with st.chat_message("user"):
         st.markdown(user_msg)
+
     with st.chat_message("assistant"):
         st.markdown(bot_msg)
 
@@ -79,13 +73,17 @@ for i in range(0, len(st.session_state.chat_history), 2):
         if feedback and client:
             rating = feedback["score"]
             comment = feedback["text"]
+
             run_id = run_collector.traced_runs[0].id if run_collector.traced_runs else None
             if run_id:
-                client.create_feedback(
-                    run_id=run_id,
-                    key="user_feedback",
-                    score=1.0 if rating == 1 else 0.0,
-                    comment=comment,
-                    feedback_source={"type": "app", "metadata": {"source": "streamlit"}}
-                )
-                st.toast("✅ Danke für dein Feedback!", icon="🦊")
+                try:
+                    client.create_feedback(
+                        run_id=run_id,
+                        key="user_feedback",
+                        score=1.0 if rating == 1 else 0.0,
+                        comment=comment,
+                        feedback_source={"type": "app", "metadata": {"source": "streamlit"}}
+                    )
+                    st.toast("✅ Danke für dein Feedback!", icon="🦊")
+                except Exception as e:
+                    st.warning(f"⚠️ Feedback konnte nicht an LangSmith gesendet werden: {e}")
