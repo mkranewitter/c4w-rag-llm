@@ -20,6 +20,3 @@ api_keys.txt
 # Temporäre / generierte Dateien
 *.log
 .DS_Store
-
-# Feedback File
-feedback.csv

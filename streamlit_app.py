@@ -1,16 +1,20 @@
 import os
-# LangSmith-Konfiguration
-os.environ["LANGCHAIN_TRACING_V2"] = "true"
-os.environ["LANGCHAIN_API_KEY"] = os.getenv("LANGCHAIN_API_KEY")
-os.environ["LANGCHAIN_PROJECT"] = os.getenv("LANGCHAIN_PROJECT")
-
+from langsmith import Client
 import streamlit as st
-import pandas as pd
 from datetime import datetime
 from uuid import uuid4
 from streamlit_feedback import streamlit_feedback
 from modules.hybrid_agent_multi_retrieval import get_multi_source_agent
 
+# LangSmith-Konfiguration aus Streamlit Secrets
+if "LANGCHAIN_API_KEY" in st.secrets and "LANGCHAIN_PROJECT" in st.secrets:
+    os.environ["LANGCHAIN_TRACING_V2"] = "true"
+    os.environ["LANGCHAIN_API_KEY"] = st.secrets["LANGCHAIN_API_KEY"]
+    os.environ["LANGCHAIN_PROJECT"] = st.secrets["LANGCHAIN_PROJECT"]
+    client = Client()
+else:
+    st.warning("⚠️ LangSmith nicht aktiviert – API Key oder Projektname fehlt.")
+    client = None
 
 st.set_page_config(page_title="Kinderbetreuungs-Chatbot", page_icon="🦊")
 st.title("🦊 Kinderbetreuungs-Chatbot")
@@ -20,19 +24,11 @@ Willkommen! Stelle hier deine Fragen zu Kinderbetreuungseinrichtungen in Oberös
 z. B. zu Standorten, Öffnungszeiten oder zur Anmeldung.
 """)
 
-# Optional: Fuchsbild einbinden (falls vorhanden)
-# st.sidebar.image("assets/Chatbot_LEO.png", caption="Dein Kita-Chat-Fuchs", use_column_width=True)
-
 agent = get_multi_source_agent()
 
 # Session State für Verlauf initialisieren
 if "chat_history" not in st.session_state:
     st.session_state.chat_history = []
-
-# Feedback CSV initialisieren
-FEEDBACK_CSV = "feedback.csv"
-if not os.path.exists(FEEDBACK_CSV):
-    pd.DataFrame(columns=["timestamp", "question", "answer", "rating", "comment"]).to_csv(FEEDBACK_CSV, index=False)
 
 # Hinweistext anzeigen, solange keine Eingabe gemacht wurde
 if not st.session_state.chat_history:
@@ -67,7 +63,6 @@ for i in range(0, len(st.session_state.chat_history), 2):
     with st.chat_message("assistant"):
         st.markdown(bot_msg)
 
-        # Neue Feedback-Komponente anzeigen
         feedback = streamlit_feedback(
             feedback_type="thumbs",
             optional_text_label="Was war hilfreich oder unklar?",
@@ -77,12 +72,20 @@ for i in range(0, len(st.session_state.chat_history), 2):
         if feedback:
             rating = feedback["score"]
             comment = feedback["text"]
-            entry = {
-                "timestamp": datetime.now().isoformat(),
-                "question": user_msg,
-                "answer": bot_msg,
-                "rating": "positiv" if rating == 1 else "negativ",
-                "comment": comment
-            }
-            pd.DataFrame([entry]).to_csv(FEEDBACK_CSV, mode="a", header=False, index=False)
             st.toast("✅ Danke für dein Feedback!", icon="🦊")
+
+            # Feedback an LangSmith senden (wenn aktiviert)
+            if client:
+                try:
+                    from langchain.smith import get_traceable_awaitable
+                    run = get_traceable_awaitable()
+                    if run and run.run_id:
+                        client.create_feedback(
+                            run_id=run.run_id,
+                            key="user_feedback",
+                            score=1.0 if rating == 1 else 0.0,
+                            comment=comment,
+                            feedback_source={"type": "app", "metadata": {"source": "streamlit"}}
+                        )
+                except Exception as e:
+                    st.warning(f"⚠️ Feedback konnte nicht an LangSmith gesendet werden: {e}")
