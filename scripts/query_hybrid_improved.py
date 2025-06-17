@@ -1,4 +1,4 @@
-# scripts/query_hybrid.py
+# scripts/query_hybrid_improved.py
 
 from modules.hybrid_agent_improved import get_hybrid_agent
 

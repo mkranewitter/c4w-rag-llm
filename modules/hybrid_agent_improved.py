@@ -1,4 +1,4 @@
-# modules/hybrid_agent.py
+# modules/hybrid_agent_improved.py
 
 import os
 from dotenv import load_dotenv

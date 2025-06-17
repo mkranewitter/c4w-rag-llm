@@ -6,7 +6,7 @@ import fitz  # PyMuPDF
 from docx import Document
 from bs4 import BeautifulSoup
 
-SUPPORTED_EXTENSIONS = [".pdf", ".docx", ".html"]
+SUPPORTED_EXTENSIONS = [".pdf", ".docx", ".html", ".htm"]
 
 def convert_pdf(file_path):
     doc = fitz.open(file_path)
@@ -28,16 +28,17 @@ def convert_and_save(input_dir="data/raw_docs", output_dir="data/knowledge_base"
     output_path.mkdir(parents=True, exist_ok=True)
 
     for file in input_path.iterdir():
-        if file.suffix.lower() not in SUPPORTED_EXTENSIONS:
+        suffix = file.suffix.lower()
+        if suffix not in SUPPORTED_EXTENSIONS:
             continue
 
         print(f"📄 Konvertiere: {file.name}")
         try:
-            if file.suffix == ".pdf":
+            if suffix == ".pdf":
                 text = convert_pdf(file)
-            elif file.suffix == ".docx":
+            elif suffix == ".docx":
                 text = convert_docx(file)
-            elif file.suffix in [".html", ".htm"]:
+            elif suffix in [".html", ".htm"]:
                 text = convert_html(file)
             else:
                 continue
