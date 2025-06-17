@@ -27,10 +27,16 @@ z. B. zu Standorten, Öffnungszeiten oder zur Anmeldung.
 """)
 
 # LangSmith Callback vorbereiten
+if "run_collector" not in st.session_state:
+    st.session_state.run_collector = RunCollectorCallbackHandler()
+
+# Callback-Handler für LangSmith"
 run_collector = RunCollectorCallbackHandler()
 
 # Agent mit Callback
-agent = get_multi_source_agent(callbacks=[run_collector])
+if "agent" not in st.session_state:
+    st.session_state.agent = get_multi_source_agent(callbacks=[run_collector])
+agent = st.session_state.agent
 
 # Chat-Historie initialisieren
 if "chat_history" not in st.session_state:
@@ -74,10 +80,10 @@ for i in range(0, len(st.session_state.chat_history), 2):
             rating = feedback["score"]
             comment = feedback["text"]
 
-            # Finde den Root-Run für LangSmith Feedback (execution_order == 1)
+            # Finde den neuesten Root-Run
             run_id = None
-            for run in run_collector.traced_runs:
-                if run.execution_order == 1:
+            for run in reversed(run_collector.traced_runs):
+                if getattr(run, "parent_run_id",None) is None:
                     run_id = run.id
                     break
 
