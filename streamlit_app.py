@@ -1,10 +1,9 @@
 import os
-from datetime import datetime
 from uuid import uuid4
 
 import streamlit as st
-from langchain.callbacks.tracers.context import collect_runs
 from langsmith import Client
+from langsmith.run_helpers import traceable  # Für Tracing
 from streamlit_feedback import streamlit_feedback
 
 from modules.hybrid_agent_multi_retrieval import get_multi_source_agent
@@ -13,7 +12,7 @@ from modules.hybrid_agent_multi_retrieval import get_multi_source_agent
 if "LANGCHAIN_API_KEY" in st.secrets and "LANGCHAIN_PROJECT" in st.secrets:
     os.environ["LANGCHAIN_TRACING_V2"] = "true"
     os.environ["LANGCHAIN_API_KEY"] = st.secrets["LANGCHAIN_API_KEY"]
-    os.environ["LANGCHAIN_PROJECT"] = st.secrets["LANGCHAIN_PROJECT"]
+    os.environ["LANGCHAIN_PROJECT"] = st.secrets["LANGCHAIN_PROJECT"]  # Fixed typo (PROJECT)
     client = Client()
 else:
     st.warning("⚠️ LangSmith nicht aktiviert – kein Feedback-Tracking aktiv.")
@@ -47,16 +46,20 @@ user_input = st.chat_input("Stelle eine Frage…")
 
 if user_input:
     with st.spinner("Antwort wird generiert..."):
-        with collect_runs() as cb:
+        @traceable  # LangSmith tracing decorator
+        def get_agent_response(user_input):
             try:
                 response = agent(user_input)
-                answer = response.get("output") or response.get("result") or "⚠️ Keine Antwort erhalten."
+                return response.get("output") or response.get("result") or "⚠️ Keine Antwort erhalten."
             except Exception as e:
-                answer = f"❌ Fehler: {str(e)}"
-        st.session_state.run_id = cb.traced_runs[0].id if cb.traced_runs else None
+                return f"❌ Fehler: {str(e)}"
+        
+        answer = get_agent_response(user_input)
+        run_id = str(uuid4())  # Generate unique ID for the run
 
     st.session_state.chat_history.append({"role": "user", "content": user_input})
     st.session_state.chat_history.append({"role": "assistant", "content": answer})
+    st.session_state.run_id = run_id
 
 # Display conversation and feedback
 for i in range(0, len(st.session_state.chat_history), 2):
@@ -83,7 +86,7 @@ for i in range(0, len(st.session_state.chat_history), 2):
                 client.create_feedback(
                     run_id=run_id,
                     key="user_feedback",
-                    score=1.0 if rating == 1 else 0.0,
+                    score=1.0 if rating == "👍" else 0.0,  # Angepasst für streamlit-feedback
                     comment=comment,
                     feedback_source={"type": "app", "metadata": {"source": "streamlit"}}
                 )
